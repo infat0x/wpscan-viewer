@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WPScan Viewer — Security Intelligence Dashboard</title>
+<meta name="description" content="Premium WPScan output parser and security dashboard with CVE extraction, vulnerability analysis, and Apple-inspired dark UI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary:    #000000;
+    --bg-secondary:  #1C1C1E;
+    --bg-tertiary:   #2C2C2E;
+    --bg-quaternary: #3A3A3C;
+    --accent:        #FFFFFF;
+    --text-primary:  #FFFFFF;
+    --text-secondary:#8E8E93;
+    --text-tertiary: #636366;
+    --separator:     #38383A;
+    --border-card:   #3A3A3C;
+    --status-critical:#FF453A;
+    --status-high:   #FF9F0A;
+    --status-medium: #FFD60A;
+    --status-low:    #30D158;
+    --status-info:   #EBEBF0;
+    --radius-card:   12px;
+    --radius-btn:    12px;
+    --radius-tag:    6px;
+    --font-mono:     'JetBrains Mono', 'Courier New', monospace;
+    --font-ui:       'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --transition:    0.18s cubic-bezier(0.4,0,0.2,1);
+    --divider-w:     5px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* ── Scrollbar (Apple-style) ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+  * { scrollbar-width: thin; scrollbar-color: var(--bg-quaternary) transparent; }
+
+  /* ── Header ── */
+  .header {
+    height: 52px;
+    background: rgba(28,28,30,0.95);
+    border-bottom: 0.5px solid var(--separator);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 14px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: relative;
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .header-icon {
+    width: 26px;
+    height: 26px;
+    background: var(--bg-tertiary);
+    border: 0.5px solid var(--border-card);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .header h1 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .header-sep { width: 0.5px; height: 18px; background: var(--separator); }
+
+  .header-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-tag);
+    border: 0.5px solid var(--border-card);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .header-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--status-low);
+    box-shadow: 0 0 0 0 rgba(48,209,88,0.5);
+    animation: pulse 2.5s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(48,209,88,0.5); }
+    70%  { box-shadow: 0 0 0 5px rgba(48,209,88,0); }
+    100% { box-shadow: 0 0 0 0 rgba(48,209,88,0); }
+  }
+
+  /* ── Layout ── */
+  .workspace {
+    display: flex;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  /* ── Input Panel ── */
+  .input-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    max-width: 80vw;
+    flex-shrink: 0;
+    border-right: 0.5px solid var(--separator);
+    background: var(--bg-primary);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 16px 10px;
+    border-bottom: 0.5px solid var(--separator);
+    flex-shrink: 0;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: 2px;
+  }
+
+  .panel-sublabel {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .panel-sublabel span {
+    font-family: var(--font-mono);
+    background: var(--bg-tertiary);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text-secondary);
+  }
+
+  textarea#raw {
+    flex: 1;
+    background: var(--bg-primary);
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 14px 16px;
+    resize: none;
+    outline: none;
+    line-height: 1.7;
+    width: 100%;
+  }
+
+  textarea#raw::placeholder { color: var(--text-tertiary); }
+
+  .action-bar {
+    padding: 10px 14px;
+    border-top: 0.5px solid var(--separator);
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    background: rgba(28,28,30,0.6);
+  }
+
+  .btn {
+    height: 32px;
+    padding: 0 16px;
+    border-radius: var(--radius-btn);
+    border: 0.5px solid var(--border-card);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #E5E5EA; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,255,255,0.12); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-ghost {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover { background: var(--bg-quaternary); color: var(--text-primary); }
+
+  .btn-load {
+    background: transparent;
+    color: var(--text-tertiary);
+    border-color: var(--separator);
+    margin-left: auto;
+  }
+  .btn-load:hover { background: var(--bg-secondary); color: var(--text-secondary); }
+
+  /* ── Divider ── */
+  .divider {
+    width: var(--divider-w);
+    background: var(--separator);
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+    transition: background var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .divider::after {
+    content: '';
+    width: 1px;
+    height: 32px;
+    background: var(--bg-quaternary);
+    border-radius: 1px;
+    transition: all var(--transition);
+  }
+
+  .divider:hover,
+  .divider.dragging {
+    background: var(--bg-tertiary);
+  }
+
+  .divider:hover::after,
+  .divider.dragging::after {
+    height: 48px;
+    background: var(--text-tertiary);
+  }
+
+  /* ── Output Panel ── */
+  .output-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    background: var(--bg-primary);
+  }
+
+  /* ── Placeholder ── */
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 16px;
+    color: var(--text-tertiary);
+    text-align: center;
+    padding: 40px;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .placeholder-icon {
+    width: 64px; height: 64px;
+    border-radius: 18px;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 4px;
+  }
+
+  .placeholder h2 { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
+  .placeholder p  { font-size: 12px; line-height: 1.7; max-width: 280px; }
+  .placeholder kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    background: var(--bg-tertiary);
+    border: 0.5px solid var(--border-card);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--text-secondary);
+  }
+
+  /* ── Target Bar ── */
+  .target-bar {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-card);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideDown 0.3s ease;
+  }
+
+  .target-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--status-low);
+    box-shadow: 0 0 0 3px rgba(48,209,88,0.15);
+    flex-shrink: 0;
+    animation: pulse 2.5s ease infinite;
+  }
+
+  .target-url {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .target-version {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-tag);
+    padding: 3px 8px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Summary Grid ── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    animation: slideDown 0.35s ease;
+  }
+
+  .stat-card {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-card);
+    padding: 14px 10px 12px;
+    text-align: center;
+    transition: transform var(--transition), box-shadow var(--transition);
+    cursor: default;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .stat-card .num {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 5px;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-card .lbl {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+
+  .c-total   .num { color: var(--text-primary); }
+  .c-critical .num { color: var(--status-critical); }
+  .c-high    .num { color: var(--status-high); }
+  .c-medium  .num { color: var(--status-medium); }
+  .c-low     .num { color: var(--status-low); }
+  .c-total   { border-top: 2px solid var(--text-secondary); }
+  .c-critical { border-top: 2px solid var(--status-critical); }
+  .c-high    { border-top: 2px solid var(--status-high); }
+  .c-medium  { border-top: 2px solid var(--status-medium); }
+  .c-low     { border-top: 2px solid var(--status-low); }
+
+  /* ── Section Cards ── */
+  .section {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-card);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    animation: slideDown 0.4s ease;
+  }
+
+  .sec-header {
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--separator);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition);
+  }
+
+  .sec-header:hover { background: var(--bg-tertiary); }
+
+  .sec-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .sec-icon { font-size: 14px; }
+
+  .cnt {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border-card);
+  }
+
+  .chev {
+    color: var(--text-tertiary);
+    font-size: 9px;
+    transition: transform var(--transition);
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chev.open { transform: rotate(180deg); }
+
+  .sec-body { display: none; }
+  .sec-body.open { display: block; }
+
+  /* ── Filter Bar ── */
+  .filter-row {
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--separator);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(28,28,30,0.5);
+    align-items: center;
+  }
+
+  .filter-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 2px;
+  }
+
+  .fb {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 11px;
+    border-radius: 20px;
+    border: 0.5px solid var(--separator);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition);
+    font-family: var(--font-ui);
+  }
+
+  .fb:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+  .fb.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .fb-critical { color: var(--status-critical); border-color: rgba(255,69,58,0.3); }
+  .fb-critical.active { background: var(--status-critical); color: #000; border-color: var(--status-critical); }
+
+  .fb-high { color: var(--status-high); border-color: rgba(255,159,10,0.3); }
+  .fb-high.active { background: var(--status-high); color: #000; border-color: var(--status-high); }
+
+  .fb-medium { color: var(--status-medium); border-color: rgba(255,214,10,0.3); }
+  .fb-medium.active { background: var(--status-medium); color: #000; border-color: var(--status-medium); }
+
+  .fb-low { color: var(--status-low); border-color: rgba(48,209,88,0.3); }
+  .fb-low.active { background: var(--status-low); color: #000; border-color: var(--status-low); }
+
+  .fb-unauth { color: var(--status-info); border-color: rgba(235,235,240,0.3); }
+  .fb-unauth.active { background: var(--status-info); color: #000; border-color: var(--status-info); }
+
+  .filter-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+
+  /* ── Vuln Items ── */
+  .vuln-item {
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--separator);
+    transition: background var(--transition);
+  }
+
+  .vuln-item:last-child { border-bottom: none; }
+  .vuln-item:hover { background: rgba(255,255,255,0.02); }
+
+  .vuln-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 8px;
+  }
+
+  .sev {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .sev-critical { background: rgba(255,69,58,0.15);  color: var(--status-critical); border: 0.5px solid rgba(255,69,58,0.4); }
+  .sev-high     { background: rgba(255,159,10,0.15); color: var(--status-high);     border: 0.5px solid rgba(255,159,10,0.4); }
+  .sev-medium   { background: rgba(255,214,10,0.15); color: var(--status-medium);   border: 0.5px solid rgba(255,214,10,0.4); }
+  .sev-low      { background: rgba(48,209,88,0.1);   color: var(--status-low);      border: 0.5px solid rgba(48,209,88,0.3); }
+
+  .vtitle {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+  }
+
+  .vuln-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  /* CVE tags row */
+  .cve-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+    align-items: center;
+  }
+
+  .cve-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 2px;
+  }
+
+  .cve-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    padding: 3px 8px;
+    border-radius: var(--radius-tag);
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid var(--border-card);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+
+  .cve-tag:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: var(--text-tertiary); }
+
+  .poc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-tag);
+    background: rgba(255,69,58,0.12);
+    border: 0.5px solid rgba(255,69,58,0.4);
+    color: var(--status-critical);
+    text-decoration: none;
+    transition: all var(--transition);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .poc-btn:hover {
+    background: rgba(255,69,58,0.22);
+    color: #fff;
+    border-color: var(--status-critical);
+    transform: translateY(-1px);
+  }
+
+  .mtag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    padding: 2px 8px;
+    border-radius: var(--radius-tag);
+    border: 0.5px solid var(--separator);
+    gap: 4px;
+  }
+
+  .mtag a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+  .mtag a:hover { color: var(--text-primary); }
+
+  .tag-fixed {
+    background: rgba(48,209,88,0.08);
+    color: var(--status-low);
+    border-color: rgba(48,209,88,0.3);
+  }
+
+  .tag-plugin {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    border-color: var(--separator);
+  }
+
+  .tag-wpscan { }
+  .tag-ref     { }
+
+  /* ── Plugin accordion ── */
+  .plugin-item { border-bottom: 0.5px solid var(--separator); }
+  .plugin-item:last-child { border-bottom: none; }
+
+  .plugin-header {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+  .plugin-header:hover { background: rgba(255,255,255,0.02); }
+
+  .plugin-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+  }
+
+  .plugin-ver {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-left: 8px;
+    font-family: var(--font-mono);
+  }
+
+  .plugin-meta { display: flex; align-items: center; gap: 8px; }
+
+  .vuln-count {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 0.5px solid rgba(255,69,58,0.4);
+    background: rgba(255,69,58,0.1);
+    color: var(--status-critical);
+  }
+
+  .vuln-count.zero {
+    border-color: var(--separator);
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+  }
+
+  .plugin-body { display: none; border-top: 0.5px solid var(--separator); }
+  .plugin-body.open { display: block; }
+
+  /* ── Findings ── */
+  .finding-item {
+    padding: 9px 16px;
+    border-bottom: 0.5px solid var(--separator);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .finding-item:last-child { border-bottom: none; }
+  .finding-item::before {
+    content: '›';
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Users ── */
+  .user-item {
+    padding: 9px 16px;
+    border-bottom: 0.5px solid var(--separator);
+    font-size: 12px;
+    color: var(--status-medium);
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .user-item:last-child { border-bottom: none; }
+  .user-item::before { content: '⚠'; font-style: normal; }
+
+  /* ── Empty ── */
+  .empty-msg {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Loading spinner ── */
+  .spin {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none;
+  }
+  .loading .spin { display: block; }
+  .loading .btn-text { display: none; }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Vuln search ── */
+  .search-row {
+    padding: 8px 14px;
+    border-bottom: 0.5px solid var(--separator);
+    background: rgba(28,28,30,0.3);
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 0.5px solid var(--separator);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    padding: 6px 12px;
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .search-input::placeholder { color: var(--text-tertiary); }
+  .search-input:focus { border-color: var(--text-tertiary); }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    .workspace { flex-direction: column; }
+    .input-panel { width: 100% !important; max-width: 100%; min-width: unset; border-right: none; border-bottom: 0.5px solid var(--separator); height: 40vh; }
+    .divider { display: none; }
+    .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">
+    <div class="header-icon">🛡</div>
+    <h1>WPScan Viewer</h1>
+  </div>
+  <div class="header-sep"></div>
+  <span class="header-badge">Security Intelligence</span>
+  <div class="header-status">
+    <div class="pulse"></div>
+    <span id="status-text">Ready</span>
+  </div>
+</header>
+
+<!-- Workspace -->
+<div class="workspace" id="workspace">
+
+  <!-- Input Panel -->
+  <div class="input-panel" id="inputPanel" style="width:42%">
+    <div class="panel-header">
+      <div class="panel-label">WPScan Output</div>
+      <div class="panel-sublabel">Paste raw output — dashboard updates live. <span>Ctrl+Enter</span></div>
+    </div>
+    <textarea id="raw" spellcheck="false" autocomplete="off"
+      placeholder="Paste your WPScan output here...&#10;&#10;Example:&#10;wpscan --url http://target --enumerate vp --api-token TOKEN&#10;&#10;The dashboard will update automatically as you type."></textarea>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="analyzeBtn" onclick="go()">
+        <div class="spin"></div>
+        <span class="btn-text">⚡ Analyze</span>
+      </button>
+      <button class="btn btn-ghost" onclick="clr()">Clear</button>
+      <button class="btn btn-load" onclick="loadExample()">Load Example</button>
+    </div>
+  </div>
+
+  <!-- Draggable Divider -->
+  <div class="divider" id="divider"></div>
+
+  <!-- Output Panel -->
+  <div class="output-panel" id="out">
+    <div class="placeholder" id="placeholder">
+      <div class="placeholder-icon">🔍</div>
+      <h2>Security Dashboard</h2>
+      <p>Paste your WPScan output on the left. The dashboard will parse and visualize vulnerabilities, CVEs, plugins &amp; more in real-time.</p>
+      <p style="margin-top:8px"><kbd>Ctrl+Enter</kbd> to analyze instantly</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ────────────────────────────────────────────
+   State
+──────────────────────────────────────────── */
+let ALL_VULNS   = [];
+let ACTIVE_FILTERS = new Set(); // multi-select
+let SEARCH_TERM = '';
+let debounceTimer = null;
+
+/* ────────────────────────────────────────────
+   Divider drag
+──────────────────────────────────────────── */
+(function() {
+  const divider   = document.getElementById('divider');
+  const workspace = document.getElementById('workspace');
+  const panel     = document.getElementById('inputPanel');
+  let dragging = false, startX, startW;
+
+  divider.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startW = panel.offsetWidth;
+    divider.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx  = e.clientX - startX;
+    const total = workspace.offsetWidth;
+    const newW = Math.max(220, Math.min(startW + dx, total * 0.80));
+    panel.style.width = newW + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+})();
+
+/* ────────────────────────────────────────────
+   Real-time parsing (debounced 400ms)
+──────────────────────────────────────────── */
+document.getElementById('raw').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    const raw = document.getElementById('raw').value.trim();
+    if (raw.length > 100) go(); // only parse if there's meaningful content
+  }, 400);
+});
+
+/* ────────────────────────────────────────────
+   Core Actions
+──────────────────────────────────────────── */
+function go() {
+  const raw = document.getElementById('raw').value.trim();
+  if (!raw) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.classList.add('loading');
+  setStatus('Analyzing…');
+
+  fetch('/parse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw })
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.classList.remove('loading');
+    render(data);
+    setStatus('Analysis complete');
+  })
+  .catch(err => {
+    btn.classList.remove('loading');
+    setStatus('Error — check console');
+    console.error(err);
+  });
+}
+
+function clr() {
+  document.getElementById('raw').value = '';
+  ALL_VULNS = [];
+  ACTIVE_FILTERS.clear();
+  SEARCH_TERM = '';
+  setStatus('Ready');
+  document.getElementById('out').innerHTML =
+    `<div class="placeholder" id="placeholder">
+      <div class="placeholder-icon">🔍</div>
+      <h2>Security Dashboard</h2>
+      <p>Paste your WPScan output on the left. The dashboard will parse and visualize vulnerabilities, CVEs, plugins &amp; more in real-time.</p>
+      <p style="margin-top:8px"><kbd>Ctrl+Enter</kbd> to analyze instantly</p>
+    </div>`;
+}
+
+function loadExample() {
+  fetch('/example')
+    .then(r => r.text())
+    .then(txt => {
+      document.getElementById('raw').value = txt;
+      go();
+    })
+    .catch(() => setStatus('Could not load example'));
+}
+
+function setStatus(msg) {
+  document.getElementById('status-text').textContent = msg;
+}
+
+/* ────────────────────────────────────────────
+   Multi-filter logic
+──────────────────────────────────────────── */
+function toggleFilter(sev, btn) {
+  if (sev === 'all') {
+    // Clear all → show all
+    ACTIVE_FILTERS.clear();
+    document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    // Remove 'all' active
+    document.querySelector('.fb[data-sev="all"]')?.classList.remove('active');
+    if (ACTIVE_FILTERS.has(sev)) {
+      ACTIVE_FILTERS.delete(sev);
+      btn.classList.remove('active');
+    } else {
+      ACTIVE_FILTERS.add(sev);
+      btn.classList.add('active');
+    }
+    if (ACTIVE_FILTERS.size === 0) {
+      document.querySelector('.fb[data-sev="all"]')?.classList.add('active');
+    }
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  let filtered = ALL_VULNS;
+
+  if (ACTIVE_FILTERS.size > 0) {
+    filtered = filtered.filter(v => {
+      if (ACTIVE_FILTERS.has('unauthenticated')) {
+        if (v.title.toLowerCase().includes('unauthenticated')) return true;
+      }
+      if (ACTIVE_FILTERS.has(v.severity)) return true;
+      return false;
+    });
+  }
+
+  if (SEARCH_TERM) {
+    const q = SEARCH_TERM.toLowerCase();
+    filtered = filtered.filter(v =>
+      v.title.toLowerCase().includes(q) ||
+      (v.plugin && v.plugin.toLowerCase().includes(q)) ||
+      (v.cves && v.cves.some(c => c.id.toLowerCase().includes(q)))
+    );
+  }
+
+  const container = document.getElementById('vb');
+  if (container) {
+    container.innerHTML = renderVulns(filtered);
+    const fc = document.getElementById('filter-count');
+    if (fc) fc.textContent = `${filtered.length} shown`;
+  }
+}
+
+/* ────────────────────────────────────────────
+   Render
+──────────────────────────────────────────── */
+function render(d) {
+  ALL_VULNS = d.vulnerabilities || [];
+  ACTIVE_FILTERS.clear();
+  SEARCH_TERM = '';
+  const s = d.summary;
+  let h = '';
+
+  /* Target */
+  if (d.target) {
+    h += `<div class="target-bar">
+      <div class="target-dot"></div>
+      <span class="target-url">${esc(d.target)}</span>
+      ${d.wordpress_version ? `<span class="target-version">WP ${esc(d.wordpress_version)}</span>` : ''}
+    </div>`;
+  }
+
+  /* Summary */
+  h += `<div class="summary-grid">
+    <div class="stat-card c-total">
+      <div class="num">${s.total_vulns}</div>
+      <div class="lbl">Total</div>
+    </div>
+    <div class="stat-card c-critical">
+      <div class="num">${s.critical}</div>
+      <div class="lbl">Critical</div>
+    </div>
+    <div class="stat-card c-high">
+      <div class="num">${s.high}</div>
+      <div class="lbl">High</div>
+    </div>
+    <div class="stat-card c-medium">
+      <div class="num">${s.medium}</div>
+      <div class="lbl">Medium</div>
+    </div>
+    <div class="stat-card c-low">
+      <div class="num">${s.low}</div>
+      <div class="lbl">Low</div>
+    </div>
+  </div>`;
+
+  /* Vulnerabilities */
+  if (ALL_VULNS.length > 0) {
+    h += `<div class="section">
+      <div class="sec-header" onclick="tog('vb','vc')">
+        <div class="sec-title">
+          <span class="sec-icon">⚠</span>
+          All Vulnerabilities
+          <span class="cnt">${ALL_VULNS.length}</span>
+        </div>
+        <span class="chev open" id="vc">▾</span>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Filter</span>
+        <button class="fb active" data-sev="all"     onclick="toggleFilter('all',this)">All</button>
+        <button class="fb fb-critical" data-sev="critical"  onclick="toggleFilter('critical',this)">Critical</button>
+        <button class="fb fb-high"     data-sev="high"      onclick="toggleFilter('high',this)">High</button>
+        <button class="fb fb-medium"   data-sev="medium"    onclick="toggleFilter('medium',this)">Medium</button>
+        <button class="fb fb-low"      data-sev="low"       onclick="toggleFilter('low',this)">Low</button>
+        <button class="fb fb-unauth"   data-sev="unauthenticated" onclick="toggleFilter('unauthenticated',this)">Unauth</button>
+        <span class="filter-count" id="filter-count">${ALL_VULNS.length} shown</span>
+      </div>
+      <div class="search-row">
+        <input type="text" class="search-input" id="vuln-search"
+          placeholder="Search vulnerabilities, plugins, CVEs…"
+          oninput="SEARCH_TERM=this.value;applyFilters()">
+      </div>
+      <div class="sec-body open" id="vb">${renderVulns(ALL_VULNS)}</div>
+    </div>`;
+  }
+
+  /* Plugins */
+  if (d.plugins && d.plugins.length > 0) {
+    const pluginsHtml = d.plugins.map((p, idx) => {
+      const pid    = 'p' + idx;
+      const vcount = p.vulns ? p.vulns.length : 0;
+      return `<div class="plugin-item">
+        <div class="plugin-header" onclick="togP('${pid}',${idx})">
+          <div>
+            <span class="plugin-name">${esc(p.name)}</span>
+            ${p.version ? `<span class="plugin-ver">v${esc(p.version)}</span>` : ''}
+          </div>
+          <div class="plugin-meta">
+            <span class="vuln-count${vcount === 0 ? ' zero' : ''}">${vcount} vuln${vcount !== 1 ? 's' : ''}</span>
+            <span class="chev" id="pc${idx}">▾</span>
+          </div>
+        </div>
+        <div class="plugin-body" id="${pid}">
+          ${vcount > 0 ? renderVulns(p.vulns) : '<div class="empty-msg">No vulnerabilities identified.</div>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    h += `<div class="section">
+      <div class="sec-header" onclick="tog('pb','pc_h')">
+        <div class="sec-title">
+          <span class="sec-icon">🔌</span>
+          Plugins
+          <span class="cnt">${d.plugins.length}</span>
+        </div>
+        <span class="chev" id="pc_h">▾</span>
+      </div>
+      <div class="sec-body" id="pb">${pluginsHtml}</div>
+    </div>`;
+  }
+
+  /* Interesting Findings */
+  if (d.interesting_findings && d.interesting_findings.length > 0) {
+    h += `<div class="section">
+      <div class="sec-header" onclick="tog('fb2','fc2')">
+        <div class="sec-title">
+          <span class="sec-icon">🔎</span>
+          Interesting Findings
+          <span class="cnt">${d.interesting_findings.length}</span>
+        </div>
+        <span class="chev" id="fc2">▾</span>
+      </div>
+      <div class="sec-body" id="fb2">
+        ${d.interesting_findings.map(f => `<div class="finding-item">${esc(f)}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  /* Users */
+  if (d.users && d.users.length > 0) {
+    h += `<div class="section">
+      <div class="sec-header" onclick="tog('ub','uc')">
+        <div class="sec-title">
+          <span class="sec-icon">👤</span>
+          Users Discovered
+          <span class="cnt">${d.users.length}</span>
+        </div>
+        <span class="chev open" id="uc">▾</span>
+      </div>
+      <div class="sec-body open" id="ub">
+        ${d.users.map(u => `<div class="user-item">${esc(u)}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('out').innerHTML = h ||
+    `<div class="placeholder"><div class="placeholder-icon">❓</div><h2>Nothing Parsed</h2><p>Could not extract data. Ensure you paste the full WPScan output.</p></div>`;
+}
+
+/* ────────────────────────────────────────────
+   Render Vuln Cards
+──────────────────────────────────────────── */
+function renderVulns(vulns) {
+  if (!vulns || vulns.length === 0)
+    return '<div class="empty-msg">No vulnerabilities match the current filters.</div>';
+
+  return vulns.map(v => {
+    const sev  = v.severity || 'low';
+    const refs = (v.references || []);
+    const cves = (v.cves || []);
+
+    /* CVE section */
+    let cveHtml = '';
+    if (cves.length > 0) {
+      const cveTags = cves.map(c => {
+        const cveTag = c.cve_url
+          ? `<a href="${esc(c.cve_url)}" target="_blank" rel="noopener" class="cve-tag" title="View on NVD/Mitre">${esc(c.id)} ↗</a>`
+          : `<span class="cve-tag">${esc(c.id)}</span>`;
+        const pocBtn = c.poc_url
+          ? `<a href="${esc(c.poc_url)}" target="_blank" rel="noopener" class="poc-btn">💀 PoC</a>`
+          : '';
+        return cveTag + pocBtn;
+      }).join('');
+      cveHtml = `<div class="cve-row"><span class="cve-label">CVE</span>${cveTags}</div>`;
+    }
+
+    /* Reference tags */
+    const refTags = refs.slice(0, 4).map(r => {
+      const isCve    = r.includes('cve.mitre') || r.includes('nvd.nist');
+      const isWpscan = r.includes('wpscan.com');
+      const isWf     = r.includes('wordfence');
+      const isPatch  = r.includes('patchstack');
+      const isGh     = r.includes('github.com');
+      const isWpOrg  = r.includes('wordpress.org');
+
+      let lbl = 'Ref ↗';
+      let extraClass = 'tag-ref';
+      if (isCve)    { lbl = 'Mitre ↗'; extraClass = 'tag-wpscan'; }
+      else if (isWpscan) { lbl = 'WPScan ↗'; extraClass = 'tag-wpscan'; }
+      else if (isWf)     { lbl = 'Wordfence ↗'; }
+      else if (isPatch)  { lbl = 'PatchStack ↗'; }
+      else if (isGh)     { lbl = 'GitHub ↗'; }
+      else if (isWpOrg)  { lbl = 'WP.org ↗'; }
+
+      return `<span class="mtag ${extraClass}"><a href="${esc(r)}" target="_blank" rel="noopener">${lbl}</a></span>`;
+    }).join('');
+
+    const fi   = v.fixed_in  ? `<span class="mtag tag-fixed">✓ Fixed ${esc(v.fixed_in)}</span>` : '';
+    const plug = v.plugin    ? `<span class="mtag tag-plugin">${esc(v.plugin)}</span>`            : '';
+
+    return `<div class="vuln-item" data-sev="${sev}">
+      <div class="vuln-header">
+        <span class="sev sev-${sev}">${sev}</span>
+        <span class="vtitle">${esc(v.title)}</span>
+      </div>
+      ${cveHtml}
+      <div class="vuln-meta">${fi}${plug}${refTags}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ────────────────────────────────────────────
+   Accordion helpers
+──────────────────────────────────────────── */
+function tog(bodyId, chevId) {
+  const b = document.getElementById(bodyId);
+  const c = document.getElementById(chevId);
+  if (!b) return;
+  b.classList.toggle('open');
+  if (c) c.classList.toggle('open');
+}
+
+function togP(pid, idx) {
+  const b = document.getElementById(pid);
+  const c = document.getElementById('pc' + idx);
+  if (!b) return;
+  b.classList.toggle('open');
+  if (c) c.classList.toggle('open');
+}
+
+/* ────────────────────────────────────────────
+   Escape HTML
+──────────────────────────────────────────── */
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#39;');
+}
+
+/* ────────────────────────────────────────────
+   Keyboard shortcuts
+──────────────────────────────────────────── */
+document.getElementById('raw').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); go(); }
+});
+</script>
+</body>
+</html>
