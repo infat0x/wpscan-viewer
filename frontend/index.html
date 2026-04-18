@@ -3,897 +3,1005 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WPScan Viewer — Security Intelligence Dashboard</title>
-<meta name="description" content="Premium WPScan output parser and security dashboard with CVE extraction, vulnerability analysis, and Apple-inspired dark UI.">
+<title>WPScan Viewer — Security Dashboard</title>
+<meta name="description" content="Premium WPScan output parser: CVE extraction, vulnerability analysis, modern dark UI.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg-primary:    #000000;
-    --bg-secondary:  #1C1C1E;
-    --bg-tertiary:   #2C2C2E;
-    --bg-quaternary: #3A3A3C;
-    --accent:        #FFFFFF;
-    --text-primary:  #FFFFFF;
-    --text-secondary:#8E8E93;
-    --text-tertiary: #636366;
-    --separator:     #38383A;
-    --border-card:   #3A3A3C;
-    --status-critical:#FF453A;
-    --status-high:   #FF9F0A;
-    --status-medium: #FFD60A;
-    --status-low:    #30D158;
-    --status-info:   #EBEBF0;
-    --radius-card:   12px;
-    --radius-btn:    12px;
-    --radius-tag:    6px;
-    --font-mono:     'JetBrains Mono', 'Courier New', monospace;
-    --font-ui:       'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    --transition:    0.18s cubic-bezier(0.4,0,0.2,1);
-    --divider-w:     5px;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  html, body {
-    height: 100%;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-  }
-
-  /* ── Scrollbar (Apple-style) ── */
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--bg-quaternary); border-radius: 2px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
-  * { scrollbar-width: thin; scrollbar-color: var(--bg-quaternary) transparent; }
-
-  /* ── Header ── */
-  .header {
-    height: 52px;
-    background: rgba(28,28,30,0.95);
-    border-bottom: 0.5px solid var(--separator);
-    display: flex;
-    align-items: center;
-    padding: 0 20px;
-    gap: 14px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    position: relative;
-    z-index: 100;
-    flex-shrink: 0;
-  }
-
-  .header-logo {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-  }
-
-  .header-icon {
-    width: 26px;
-    height: 26px;
-    background: var(--bg-tertiary);
-    border: 0.5px solid var(--border-card);
-    border-radius: 7px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-  }
-
-  .header h1 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-  }
-
-  .header-sep { width: 0.5px; height: 18px; background: var(--separator); }
-
-  .header-badge {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: var(--radius-tag);
-    border: 0.5px solid var(--border-card);
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  .header-status {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--text-tertiary);
-  }
-
-  .pulse {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--status-low);
-    box-shadow: 0 0 0 0 rgba(48,209,88,0.5);
-    animation: pulse 2.5s ease infinite;
-  }
-
-  @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(48,209,88,0.5); }
-    70%  { box-shadow: 0 0 0 5px rgba(48,209,88,0); }
-    100% { box-shadow: 0 0 0 0 rgba(48,209,88,0); }
-  }
-
-  /* ── Layout ── */
-  .workspace {
-    display: flex;
-    height: calc(100vh - 52px);
-    overflow: hidden;
-  }
-
-  /* ── Input Panel ── */
-  .input-panel {
-    display: flex;
-    flex-direction: column;
-    min-width: 220px;
-    max-width: 80vw;
-    flex-shrink: 0;
-    border-right: 0.5px solid var(--separator);
-    background: var(--bg-primary);
-    overflow: hidden;
-  }
-
-  .panel-header {
-    padding: 14px 16px 10px;
-    border-bottom: 0.5px solid var(--separator);
-    flex-shrink: 0;
-  }
-
-  .panel-label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: 2px;
-  }
-
-  .panel-sublabel {
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
-
-  .panel-sublabel span {
-    font-family: var(--font-mono);
-    background: var(--bg-tertiary);
-    padding: 1px 5px;
-    border-radius: 4px;
-    font-size: 10px;
-    color: var(--text-secondary);
-  }
-
-  textarea#raw {
-    flex: 1;
-    background: var(--bg-primary);
-    border: none;
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 14px 16px;
-    resize: none;
-    outline: none;
-    line-height: 1.7;
-    width: 100%;
-  }
-
-  textarea#raw::placeholder { color: var(--text-tertiary); }
-
-  .action-bar {
-    padding: 10px 14px;
-    border-top: 0.5px solid var(--separator);
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-    background: rgba(28,28,30,0.6);
-  }
-
-  .btn {
-    height: 32px;
-    padding: 0 16px;
-    border-radius: var(--radius-btn);
-    border: 0.5px solid var(--border-card);
-    font-family: var(--font-ui);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
-  }
-  .btn-primary:hover { background: #E5E5EA; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,255,255,0.12); }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-ghost {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-  }
-  .btn-ghost:hover { background: var(--bg-quaternary); color: var(--text-primary); }
-
-  .btn-load {
-    background: transparent;
-    color: var(--text-tertiary);
-    border-color: var(--separator);
-    margin-left: auto;
-  }
-  .btn-load:hover { background: var(--bg-secondary); color: var(--text-secondary); }
-
-  /* ── Divider ── */
-  .divider {
-    width: var(--divider-w);
-    background: var(--separator);
-    cursor: col-resize;
-    flex-shrink: 0;
-    position: relative;
-    transition: background var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-  }
-
-  .divider::after {
-    content: '';
-    width: 1px;
-    height: 32px;
-    background: var(--bg-quaternary);
-    border-radius: 1px;
-    transition: all var(--transition);
-  }
-
-  .divider:hover,
-  .divider.dragging {
-    background: var(--bg-tertiary);
-  }
-
-  .divider:hover::after,
-  .divider.dragging::after {
-    height: 48px;
-    background: var(--text-tertiary);
-  }
-
-  /* ── Output Panel ── */
-  .output-panel {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-width: 0;
-    background: var(--bg-primary);
-  }
-
-  /* ── Placeholder ── */
-  .placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 16px;
-    color: var(--text-tertiary);
-    text-align: center;
-    padding: 40px;
-    animation: fadeIn 0.4s ease;
-  }
-
-  .placeholder-icon {
-    width: 64px; height: 64px;
-    border-radius: 18px;
-    background: var(--bg-secondary);
-    border: 0.5px solid var(--border-card);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    margin-bottom: 4px;
-  }
-
-  .placeholder h2 { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
-  .placeholder p  { font-size: 12px; line-height: 1.7; max-width: 280px; }
-  .placeholder kbd {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    background: var(--bg-tertiary);
-    border: 0.5px solid var(--border-card);
-    border-radius: 4px;
-    padding: 2px 6px;
-    color: var(--text-secondary);
-  }
-
-  /* ── Target Bar ── */
-  .target-bar {
-    background: var(--bg-secondary);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-card);
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slideDown 0.3s ease;
-  }
-
-  .target-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--status-low);
-    box-shadow: 0 0 0 3px rgba(48,209,88,0.15);
-    flex-shrink: 0;
-    animation: pulse 2.5s ease infinite;
-  }
-
-  .target-url {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-
-  .target-version {
-    margin-left: auto;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-tertiary);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-tag);
-    padding: 3px 8px;
-    font-family: var(--font-mono);
-  }
-
-  /* ── Summary Grid ── */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    animation: slideDown 0.35s ease;
-  }
-
-  .stat-card {
-    background: var(--bg-secondary);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-card);
-    padding: 14px 10px 12px;
-    text-align: center;
-    transition: transform var(--transition), box-shadow var(--transition);
-    cursor: default;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  }
-
-  .stat-card .num {
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1;
-    margin-bottom: 5px;
-    letter-spacing: -0.02em;
-  }
-
-  .stat-card .lbl {
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-  }
-
-  .c-total   .num { color: var(--text-primary); }
-  .c-critical .num { color: var(--status-critical); }
-  .c-high    .num { color: var(--status-high); }
-  .c-medium  .num { color: var(--status-medium); }
-  .c-low     .num { color: var(--status-low); }
-  .c-total   { border-top: 2px solid var(--text-secondary); }
-  .c-critical { border-top: 2px solid var(--status-critical); }
-  .c-high    { border-top: 2px solid var(--status-high); }
-  .c-medium  { border-top: 2px solid var(--status-medium); }
-  .c-low     { border-top: 2px solid var(--status-low); }
-
-  /* ── Section Cards ── */
-  .section {
-    background: var(--bg-secondary);
-    border: 0.5px solid var(--border-card);
-    border-radius: var(--radius-card);
-    overflow: hidden;
-    animation: slideDown 0.4s ease;
-  }
-
-  .sec-header {
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--separator);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    user-select: none;
-    transition: background var(--transition);
-  }
-
-  .sec-header:hover { background: var(--bg-tertiary); }
-
-  .sec-title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    letter-spacing: -0.01em;
-  }
-
-  .sec-icon { font-size: 14px; }
-
-  .cnt {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 7px;
-    border-radius: 20px;
-    border: 0.5px solid var(--border-card);
-  }
-
-  .chev {
-    color: var(--text-tertiary);
-    font-size: 9px;
-    transition: transform var(--transition);
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .chev.open { transform: rotate(180deg); }
-
-  .sec-body { display: none; }
-  .sec-body.open { display: block; }
-
-  /* ── Filter Bar ── */
-  .filter-row {
-    padding: 10px 14px;
-    border-bottom: 0.5px solid var(--separator);
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    background: rgba(28,28,30,0.5);
-    align-items: center;
-  }
-
-  .filter-label {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-right: 2px;
-  }
-
-  .fb {
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 11px;
-    border-radius: 20px;
-    border: 0.5px solid var(--separator);
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all var(--transition);
-    font-family: var(--font-ui);
-  }
-
-  .fb:hover { background: var(--bg-tertiary); color: var(--text-primary); }
-
-  .fb.active {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
-    font-weight: 600;
-  }
-
-  .fb-critical { color: var(--status-critical); border-color: rgba(255,69,58,0.3); }
-  .fb-critical.active { background: var(--status-critical); color: #000; border-color: var(--status-critical); }
-
-  .fb-high { color: var(--status-high); border-color: rgba(255,159,10,0.3); }
-  .fb-high.active { background: var(--status-high); color: #000; border-color: var(--status-high); }
-
-  .fb-medium { color: var(--status-medium); border-color: rgba(255,214,10,0.3); }
-  .fb-medium.active { background: var(--status-medium); color: #000; border-color: var(--status-medium); }
-
-  .fb-low { color: var(--status-low); border-color: rgba(48,209,88,0.3); }
-  .fb-low.active { background: var(--status-low); color: #000; border-color: var(--status-low); }
-
-  .fb-unauth { color: var(--status-info); border-color: rgba(235,235,240,0.3); }
-  .fb-unauth.active { background: var(--status-info); color: #000; border-color: var(--status-info); }
-
-  .filter-count {
-    margin-left: auto;
-    font-size: 10px;
-    color: var(--text-tertiary);
-    font-weight: 500;
-  }
-
-  /* ── Vuln Items ── */
-  .vuln-item {
-    padding: 12px 16px;
-    border-bottom: 0.5px solid var(--separator);
-    transition: background var(--transition);
-  }
-
-  .vuln-item:last-child { border-bottom: none; }
-  .vuln-item:hover { background: rgba(255,255,255,0.02); }
-
-  .vuln-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 9px;
-    margin-bottom: 8px;
-  }
-
-  .sev {
-    font-size: 9px;
-    font-weight: 700;
-    padding: 3px 7px;
-    border-radius: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    margin-top: 1px;
-    flex-shrink: 0;
-  }
-
-  .sev-critical { background: rgba(255,69,58,0.15);  color: var(--status-critical); border: 0.5px solid rgba(255,69,58,0.4); }
-  .sev-high     { background: rgba(255,159,10,0.15); color: var(--status-high);     border: 0.5px solid rgba(255,159,10,0.4); }
-  .sev-medium   { background: rgba(255,214,10,0.15); color: var(--status-medium);   border: 0.5px solid rgba(255,214,10,0.4); }
-  .sev-low      { background: rgba(48,209,88,0.1);   color: var(--status-low);      border: 0.5px solid rgba(48,209,88,0.3); }
-
-  .vtitle {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-primary);
-    line-height: 1.5;
-    letter-spacing: -0.01em;
-  }
-
-  .vuln-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 6px;
-  }
-
-  /* CVE tags row */
-  .cve-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 5px;
-    align-items: center;
-  }
-
-  .cve-label {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-right: 2px;
-  }
-
-  .cve-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 10px;
-    font-weight: 600;
-    font-family: var(--font-mono);
-    padding: 3px 8px;
-    border-radius: var(--radius-tag);
-    background: rgba(255,255,255,0.05);
-    border: 0.5px solid var(--border-card);
-    color: var(--text-secondary);
-    text-decoration: none;
-    transition: all var(--transition);
-    cursor: pointer;
-  }
-
-  .cve-tag:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: var(--text-tertiary); }
-
-  .poc-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 9px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: var(--radius-tag);
-    background: rgba(255,69,58,0.12);
-    border: 0.5px solid rgba(255,69,58,0.4);
-    color: var(--status-critical);
-    text-decoration: none;
-    transition: all var(--transition);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .poc-btn:hover {
-    background: rgba(255,69,58,0.22);
-    color: #fff;
-    border-color: var(--status-critical);
-    transform: translateY(-1px);
-  }
-
-  .mtag {
-    display: inline-flex;
-    align-items: center;
-    font-size: 10px;
-    color: var(--text-tertiary);
-    background: var(--bg-tertiary);
-    padding: 2px 8px;
-    border-radius: var(--radius-tag);
-    border: 0.5px solid var(--separator);
-    gap: 4px;
-  }
-
-  .mtag a {
-    color: inherit;
-    text-decoration: none;
-    transition: color var(--transition);
-  }
-  .mtag a:hover { color: var(--text-primary); }
-
-  .tag-fixed {
-    background: rgba(48,209,88,0.08);
-    color: var(--status-low);
-    border-color: rgba(48,209,88,0.3);
-  }
-
-  .tag-plugin {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-secondary);
-    border-color: var(--separator);
-  }
-
-  /* .tag-wpscan and .tag-ref inherit styles from .mtag */
-
-  /* ── Plugin accordion ── */
-  .plugin-item { border-bottom: 0.5px solid var(--separator); }
-  .plugin-item:last-child { border-bottom: none; }
-
-  .plugin-header {
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: background var(--transition);
-  }
-  .plugin-header:hover { background: rgba(255,255,255,0.02); }
-
-  .plugin-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-  }
-
-  .plugin-ver {
-    font-size: 10px;
-    color: var(--text-tertiary);
-    margin-left: 8px;
-    font-family: var(--font-mono);
-  }
-
-  .plugin-meta { display: flex; align-items: center; gap: 8px; }
-
-  .vuln-count {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
-    border: 0.5px solid rgba(255,69,58,0.4);
-    background: rgba(255,69,58,0.1);
-    color: var(--status-critical);
-  }
-
-  .vuln-count.zero {
-    border-color: var(--separator);
-    background: var(--bg-tertiary);
-    color: var(--text-tertiary);
-  }
-
-  .plugin-body { display: none; border-top: 0.5px solid var(--separator); }
-  .plugin-body.open { display: block; }
-
-  /* ── Findings ── */
-  .finding-item {
-    padding: 9px 16px;
-    border-bottom: 0.5px solid var(--separator);
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  .finding-item:last-child { border-bottom: none; }
-  .finding-item::before {
-    content: '›';
-    color: var(--text-tertiary);
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  /* ── Users ── */
-  .user-item {
-    padding: 9px 16px;
-    border-bottom: 0.5px solid var(--separator);
-    font-size: 12px;
-    color: var(--status-medium);
-    font-family: var(--font-mono);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .user-item:last-child { border-bottom: none; }
-  .user-item::before { content: '⚠'; font-style: normal; }
-
-  /* ── Empty ── */
-  .empty-msg {
-    padding: 20px;
-    text-align: center;
-    color: var(--text-tertiary);
-    font-size: 12px;
-  }
-
-  /* ── Animations ── */
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── Loading spinner ── */
-  .spin {
-    width: 14px; height: 14px;
-    border: 2px solid rgba(0,0,0,0.2);
-    border-top-color: #000;
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    display: none;
-  }
-  .loading .spin { display: block; }
-  .loading .btn-text { display: none; }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* ── Vuln search ── */
-  .search-row {
-    padding: 8px 14px;
-    border-bottom: 0.5px solid var(--separator);
-    background: rgba(28,28,30,0.3);
-  }
-
-  .search-input {
-    width: 100%;
-    background: var(--bg-tertiary);
-    border: 0.5px solid var(--separator);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-family: var(--font-ui);
-    font-size: 12px;
-    padding: 6px 12px;
-    outline: none;
-    transition: border-color var(--transition);
-  }
-
-  .search-input::placeholder { color: var(--text-tertiary); }
-  .search-input:focus { border-color: var(--text-tertiary); }
-
-  /* ── Responsive ── */
-  @media (max-width: 700px) {
-    .workspace { flex-direction: column; }
-    .input-panel { width: 100% !important; max-width: 100%; min-width: unset; border-right: none; border-bottom: 0.5px solid var(--separator); height: 40vh; }
-    .divider { display: none; }
-    .summary-grid { grid-template-columns: repeat(3, 1fr); }
-  }
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --bg-base:       #0d0f14;
+  --bg-surface:    #13161e;
+  --bg-card:       #1a1e28;
+  --bg-card-hover: #1f2433;
+  --bg-input:      #111318;
+  --border:        rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.12);
+
+  --accent:        #6c63ff;
+  --accent-glow:   rgba(108,99,255,0.25);
+  --accent2:       #00d4aa;
+
+  --critical:      #ff4757;
+  --critical-bg:   rgba(255,71,87,0.12);
+  --critical-bd:   rgba(255,71,87,0.3);
+
+  --high:          #ff7f28;
+  --high-bg:       rgba(255,127,40,0.12);
+  --high-bd:       rgba(255,127,40,0.3);
+
+  --medium:        #ffd32a;
+  --medium-bg:     rgba(255,211,42,0.12);
+  --medium-bd:     rgba(255,211,42,0.3);
+
+  --low:           #2ed573;
+  --low-bg:        rgba(46,213,115,0.1);
+  --low-bd:        rgba(46,213,115,0.3);
+
+  --info:          #a29bfe;
+
+  --txt-1:  #f0f2ff;
+  --txt-2:  #9ba3c0;
+  --txt-3:  #5a6280;
+
+  --mono:   'JetBrains Mono', 'Courier New', monospace;
+  --ui:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Font size scale — controlled by JS */
+  --fs-base:  13px;
+  --fs-sm:    11px;
+  --fs-xs:    10px;
+  --fs-lg:    15px;
+  --fs-xl:    18px;
+  --fs-2xl:   24px;
+
+  --radius:   14px;
+  --radius-sm: 8px;
+  --radius-xs: 5px;
+
+  --panel-w:  42%;
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--txt-1);
+  font-family: var(--ui);
+  font-size: var(--fs-base);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+
+/* ═══════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════ */
+.topbar {
+  height: 56px;
+  background: rgba(13,15,20,0.9);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, var(--accent) 0%, #a78bfa 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 0 16px var(--accent-glow);
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--txt-1);
+  letter-spacing: -0.02em;
+}
+
+.brand-tag {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(108,99,255,0.15);
+  color: var(--info);
+  border: 1px solid rgba(108,99,255,0.25);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Font size controls */
+.fs-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.fs-label {
+  font-size: var(--fs-xs);
+  color: var(--txt-3);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+
+.fs-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--txt-2);
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.15s var(--ease);
+  line-height: 1;
+}
+.fs-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.fs-value {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--txt-1);
+  font-family: var(--mono);
+  min-width: 26px;
+  text-align: center;
+}
+
+/* Status */
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--txt-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+}
+
+.dot-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--low);
+  box-shadow: 0 0 0 0 rgba(46,213,115,0.5);
+  animation: blink 2.5s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes blink {
+  0%   { box-shadow: 0 0 0 0 rgba(46,213,115,0.5); }
+  70%  { box-shadow: 0 0 0 5px rgba(46,213,115,0); }
+  100% { box-shadow: 0 0 0 0 rgba(46,213,115,0); }
+}
+
+#status-text { color: var(--txt-2); }
+
+/* ═══════════════════════════════════════════
+   WORKSPACE SPLIT
+═══════════════════════════════════════════ */
+.workspace {
+  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+/* ── LEFT: Input Panel ── */
+.input-panel {
+  width: var(--panel-w);
+  min-width: 220px;
+  max-width: 75vw;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.panel-head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--txt-1);
+  letter-spacing: -0.01em;
+  margin-bottom: 3px;
+}
+
+.panel-sub {
+  font-size: var(--fs-xs);
+  color: var(--txt-3);
+  line-height: 1.5;
+}
+
+.panel-sub kbd {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--txt-2);
+}
+
+textarea#raw {
+  flex: 1;
+  background: var(--bg-input);
+  border: none;
+  color: var(--txt-2);
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  padding: 14px 16px;
+  resize: none;
+  outline: none;
+  line-height: 1.75;
+  width: 100%;
+}
+textarea#raw::placeholder { color: var(--txt-3); }
+
+.action-row {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-family: var(--ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  outline: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent-glow);
+}
+.btn-primary:hover {
+  background: #7c74ff;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  background: var(--bg-card);
+  color: var(--txt-2);
+}
+.btn-ghost:hover { background: var(--bg-card-hover); color: var(--txt-1); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--txt-3);
+  border-color: var(--border);
+  margin-left: auto;
+  font-size: var(--fs-xs);
+}
+.btn-outline:hover { background: var(--bg-card); color: var(--txt-2); border-color: var(--border-strong); }
+
+/* Spinner */
+.spin {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.loading .spin { display: block; }
+.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── DIVIDER ── */
+.divider {
+  width: 5px;
+  background: var(--border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  z-index: 10;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.divider::after {
+  content: '';
+  width: 2px;
+  height: 28px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  transition: all 0.2s;
+}
+.divider:hover, .divider.dragging { background: rgba(108,99,255,0.2); }
+.divider:hover::after, .divider.dragging::after { height: 44px; background: var(--accent); }
+
+/* ── RIGHT: Output Panel ── */
+.output-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  background: var(--bg-base);
+}
+
+/* ═══════════════════════════════════════════
+   PLACEHOLDER
+═══════════════════════════════════════════ */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--txt-3);
+  text-align: center;
+  animation: fadeUp 0.4s var(--ease);
+}
+
+.placeholder-icon {
+  width: 72px; height: 72px;
+  border-radius: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.placeholder h2 {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--txt-1);
+  letter-spacing: -0.02em;
+}
+
+.placeholder p { font-size: var(--fs-sm); line-height: 1.7; max-width: 300px; }
+
+/* ═══════════════════════════════════════════
+   TARGET BAR
+═══════════════════════════════════════════ */
+.target-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: fadeUp 0.3s var(--ease);
+}
+
+.target-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--low);
+  box-shadow: 0 0 0 3px rgba(46,213,115,0.2);
+  flex-shrink: 0;
+  animation: blink 2.5s ease infinite;
+}
+
+.target-url {
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  color: var(--txt-1);
+  font-weight: 500;
+}
+
+.target-wp {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--txt-2);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-family: var(--mono);
+}
+
+/* ═══════════════════════════════════════════
+   SUMMARY CARDS
+═══════════════════════════════════════════ */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  animation: fadeUp 0.35s var(--ease);
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 12px 14px;
+  text-align: center;
+  cursor: default;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  background: var(--bg-card-hover);
+}
+
+.stat-num {
+  font-size: var(--fs-2xl);
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+  letter-spacing: -0.03em;
+}
+
+.stat-lbl {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--txt-3);
+}
+
+.c-total   { border-top: 2px solid rgba(255,255,255,0.2); }
+.c-critical { border-top: 2px solid var(--critical); }
+.c-high    { border-top: 2px solid var(--high); }
+.c-medium  { border-top: 2px solid var(--medium); }
+.c-low     { border-top: 2px solid var(--low); }
+
+.c-total   .stat-num { color: var(--txt-1); }
+.c-critical .stat-num { color: var(--critical); }
+.c-high    .stat-num { color: var(--high); }
+.c-medium  .stat-num { color: var(--medium); }
+.c-low     .stat-num { color: var(--low); }
+
+/* ═══════════════════════════════════════════
+   SECTION CARDS
+═══════════════════════════════════════════ */
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: fadeUp 0.4s var(--ease);
+}
+
+.sec-header {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.sec-header:hover { background: rgba(255,255,255,0.03); }
+
+.sec-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--txt-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.01em;
+}
+
+.sec-icon { font-size: var(--fs-base); }
+
+.cnt {
+  background: var(--bg-surface);
+  color: var(--txt-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+}
+
+.chev {
+  color: var(--txt-3);
+  font-size: var(--fs-xs);
+  transition: transform 0.2s var(--ease);
+  width: 18px; height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+.chev.open { transform: rotate(180deg); }
+
+.sec-body { display: none; }
+.sec-body.open { display: block; }
+
+/* ═══════════════════════════════════════════
+   FILTER + SEARCH
+═══════════════════════════════════════════ */
+.filter-bar {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: rgba(13,15,20,0.5);
+}
+
+.filter-lbl {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--txt-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 2px;
+}
+
+.fb {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--txt-2);
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+  font-family: var(--ui);
+}
+.fb:hover { background: var(--bg-surface); color: var(--txt-1); }
+.fb.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.fb-critical { color: var(--critical); border-color: var(--critical-bd); }
+.fb-critical.active { background: var(--critical); color: #fff; border-color: var(--critical); }
+.fb-high { color: var(--high); border-color: var(--high-bd); }
+.fb-high.active { background: var(--high); color: #fff; border-color: var(--high); }
+.fb-medium { color: var(--medium); border-color: var(--medium-bd); }
+.fb-medium.active { background: var(--medium); color: #000; border-color: var(--medium); }
+.fb-low { color: var(--low); border-color: var(--low-bd); }
+.fb-low.active { background: var(--low); color: #000; border-color: var(--low); }
+.fb-unauth { color: var(--info); border-color: rgba(162,155,254,0.3); }
+.fb-unauth.active { background: var(--info); color: #000; border-color: var(--info); }
+
+.filter-count {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--txt-3);
+  font-weight: 600;
+}
+
+.search-bar {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13,15,20,0.3);
+}
+
+.search-input {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--txt-1);
+  font-family: var(--ui);
+  font-size: var(--fs-sm);
+  padding: 7px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-input::placeholder { color: var(--txt-3); }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+
+/* ═══════════════════════════════════════════
+   VULN ITEMS
+═══════════════════════════════════════════ */
+.vuln-item {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.vuln-item:last-child { border-bottom: none; }
+.vuln-item:hover { background: rgba(255,255,255,0.02); }
+
+.vuln-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.sev {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.sev-critical { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical-bd); }
+.sev-high     { background: var(--high-bg);     color: var(--high);     border: 1px solid var(--high-bd); }
+.sev-medium   { background: var(--medium-bg);   color: var(--medium);   border: 1px solid var(--medium-bd); }
+.sev-low      { background: var(--low-bg);      color: var(--low);      border: 1px solid var(--low-bd); }
+
+.vtitle {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--txt-1);
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+
+.vuln-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.cve-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.cve-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--txt-3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.cve-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-family: var(--mono);
+  padding: 3px 9px;
+  border-radius: var(--radius-xs);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-strong);
+  color: var(--txt-2);
+  text-decoration: none;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.cve-tag:hover { background: rgba(255,255,255,0.1); color: var(--txt-1); border-color: rgba(255,255,255,0.2); }
+
+.poc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-xs);
+  background: var(--critical-bg);
+  border: 1px solid var(--critical-bd);
+  color: var(--critical);
+  text-decoration: none;
+  transition: all 0.15s;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.poc-btn:hover { background: rgba(255,71,87,0.22); transform: translateY(-1px); }
+
+.mtag {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  color: var(--txt-3);
+  background: var(--bg-surface);
+  padding: 2px 9px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  gap: 4px;
+}
+.mtag a { color: inherit; text-decoration: none; transition: color 0.12s; }
+.mtag a:hover { color: var(--txt-1); }
+
+.tag-fixed { background: var(--low-bg); color: var(--low); border-color: var(--low-bd); }
+.tag-plugin { background: rgba(108,99,255,0.1); color: var(--info); border-color: rgba(108,99,255,0.25); }
+
+/* .tag-wpscan and .tag-ref inherit from .mtag */
+
+/* ═══════════════════════════════════════════
+   PLUGIN ACCORDION
+═══════════════════════════════════════════ */
+.plugin-item { border-bottom: 1px solid var(--border); }
+.plugin-item:last-child { border-bottom: none; }
+
+.plugin-header {
+  padding: 11px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.plugin-header:hover { background: rgba(255,255,255,0.02); }
+
+.plugin-info { display: flex; align-items: center; gap: 8px; }
+
+.plugin-name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--info);
+  font-family: var(--mono);
+}
+
+.plugin-ver {
+  font-size: var(--fs-xs);
+  color: var(--txt-3);
+  font-family: var(--mono);
+}
+
+.plugin-right { display: flex; align-items: center; gap: 8px; }
+
+.vuln-count {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--critical-bd);
+  background: var(--critical-bg);
+  color: var(--critical);
+}
+.vuln-count.zero {
+  border-color: var(--border);
+  background: var(--bg-surface);
+  color: var(--txt-3);
+}
+
+.plugin-body { display: none; border-top: 1px solid var(--border); }
+.plugin-body.open { display: block; }
+
+/* ═══════════════════════════════════════════
+   MISC ITEMS
+═══════════════════════════════════════════ */
+.finding-item {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--txt-2);
+  line-height: 1.65;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.finding-item:last-child { border-bottom: none; }
+.finding-item::before { content: '›'; color: var(--txt-3); flex-shrink: 0; margin-top: 1px; }
+
+.user-item {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  color: var(--medium);
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.user-item:last-child { border-bottom: none; }
+.user-item::before { content: '⚠'; font-style: normal; }
+
+.empty-msg {
+  padding: 22px;
+  text-align: center;
+  color: var(--txt-3);
+  font-size: var(--fs-sm);
+}
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 720px) {
+  .workspace { flex-direction: column; }
+  .input-panel { width: 100% !important; max-width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid var(--border); height: 38vh; }
+  .divider { display: none; }
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .fs-controls { display: none; }
+}
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="header">
-  <div class="header-logo">
-    <div class="header-icon">🛡</div>
-    <h1>WPScan Viewer</h1>
+<!-- ── Topbar ── -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🛡</div>
+    <span class="brand-name">WPScan Viewer</span>
   </div>
-  <div class="header-sep"></div>
-  <span class="header-badge">Security Intelligence</span>
-  <div class="header-status">
-    <div class="pulse"></div>
-    <span id="status-text">Ready</span>
+  <span class="brand-tag">OSCP Helper</span>
+
+  <!-- Font Size Controls -->
+  <div class="fs-controls">
+    <span class="fs-label">Font</span>
+    <button class="fs-btn" id="fsDown" title="Decrease font size">−</button>
+    <span class="fs-value" id="fsVal">13</span>
+    <button class="fs-btn" id="fsUp" title="Increase font size">+</button>
+  </div>
+
+  <div class="topbar-right">
+    <div class="status-pill">
+      <div class="dot-live"></div>
+      <span id="status-text">Ready</span>
+    </div>
   </div>
 </header>
 
-<!-- Workspace -->
+<!-- ── Workspace ── -->
 <div class="workspace" id="workspace">
 
-  <!-- Input Panel -->
+  <!-- Left: Input -->
   <div class="input-panel" id="inputPanel" style="width:42%">
-    <div class="panel-header">
-      <div class="panel-label">WPScan Output</div>
-      <div class="panel-sublabel">Paste raw output — dashboard updates live. <span>Ctrl+Enter</span></div>
+    <div class="panel-head">
+      <div class="panel-title">WPScan Output</div>
+      <div class="panel-sub">Paste raw output — dashboard updates live. <kbd>Ctrl+Enter</kbd> to analyze</div>
     </div>
     <textarea id="raw" spellcheck="false" autocomplete="off"
-      placeholder="Paste your WPScan output here...&#10;&#10;Example:&#10;wpscan --url http://target --enumerate vp --api-token TOKEN&#10;&#10;The dashboard will update automatically as you type."></textarea>
-    <div class="action-bar">
+      placeholder="Paste your WPScan output here...&#10;&#10;Example:&#10;wpscan --url http://target --enumerate vp --api-token TOKEN&#10;&#10;The dashboard updates automatically."></textarea>
+    <div class="action-row">
       <button class="btn btn-primary" id="analyzeBtn" onclick="go()">
         <div class="spin"></div>
         <span class="btn-text">⚡ Analyze</span>
       </button>
       <button class="btn btn-ghost" onclick="clr()">Clear</button>
-      <button class="btn btn-load" onclick="loadExample()">Load Example</button>
+      <button class="btn btn-outline" onclick="loadExample()">Load Example</button>
     </div>
   </div>
 
-  <!-- Draggable Divider -->
+  <!-- Divider -->
   <div class="divider" id="divider"></div>
 
-  <!-- Output Panel -->
+  <!-- Right: Output -->
   <div class="output-panel" id="out">
     <div class="placeholder" id="placeholder">
       <div class="placeholder-icon">🔍</div>
       <h2>Security Dashboard</h2>
-      <p>Paste your WPScan output on the left. The dashboard will parse and visualize vulnerabilities, CVEs, plugins &amp; more in real-time.</p>
-      <p style="margin-top:8px"><kbd>Ctrl+Enter</kbd> to analyze instantly</p>
+      <p>Paste your WPScan output on the left. Vulnerabilities, CVEs, plugins &amp; users will appear here in real-time.</p>
+      <p style="margin-top:6px;font-size:10px;color:var(--txt-3)"><kbd style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--border-strong);border-radius:4px;padding:2px 6px;color:var(--txt-2)">Ctrl+Enter</kbd> to analyze instantly</p>
     </div>
   </div>
 </div>
 
 <script>
-/* ────────────────────────────────────────────
-   State
-──────────────────────────────────────────── */
-let ALL_VULNS   = [];
-let ACTIVE_FILTERS = new Set(); // multi-select
-let SEARCH_TERM = '';
-let debounceTimer = null;
+/* ══════════════════════════════════════
+   FONT SIZE CONTROL
+══════════════════════════════════════ */
+let currentFs = parseInt(localStorage.getItem('wpscan-fs') || '13');
 
-/* ────────────────────────────────────────────
-   Divider drag
-──────────────────────────────────────────── */
+function applyFs(size) {
+  size = Math.max(10, Math.min(20, size));
+  currentFs = size;
+  document.documentElement.style.setProperty('--fs-base', size + 'px');
+  document.documentElement.style.setProperty('--fs-sm',   (size - 2) + 'px');
+  document.documentElement.style.setProperty('--fs-xs',   (size - 3) + 'px');
+  document.documentElement.style.setProperty('--fs-lg',   (size + 2) + 'px');
+  document.documentElement.style.setProperty('--fs-xl',   (size + 5) + 'px');
+  document.documentElement.style.setProperty('--fs-2xl',  (size + 11) + 'px');
+  document.getElementById('fsVal').textContent = size;
+  localStorage.setItem('wpscan-fs', size);
+}
+
+document.getElementById('fsUp').addEventListener('click', () => applyFs(currentFs + 1));
+document.getElementById('fsDown').addEventListener('click', () => applyFs(currentFs - 1));
+applyFs(currentFs);
+
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let ALL_VULNS      = [];
+let ACTIVE_FILTERS = new Set();
+let SEARCH_TERM    = '';
+let debounceTimer  = null;
+
+/* ══════════════════════════════════════
+   DIVIDER DRAG
+══════════════════════════════════════ */
 (function() {
   const divider   = document.getElementById('divider');
   const workspace = document.getElementById('workspace');
@@ -901,22 +1009,16 @@ let debounceTimer = null;
   let dragging = false, startX, startW;
 
   divider.addEventListener('mousedown', e => {
-    dragging = true;
-    startX = e.clientX;
-    startW = panel.offsetWidth;
+    dragging = true; startX = e.clientX; startW = panel.offsetWidth;
     divider.classList.add('dragging');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   });
-
   document.addEventListener('mousemove', e => {
     if (!dragging) return;
-    const dx  = e.clientX - startX;
-    const total = workspace.offsetWidth;
-    const newW = Math.max(220, Math.min(startW + dx, total * 0.80));
+    const newW = Math.max(220, Math.min(startW + e.clientX - startX, workspace.offsetWidth * 0.8));
     panel.style.width = newW + 'px';
   });
-
   document.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging = false;
@@ -926,24 +1028,23 @@ let debounceTimer = null;
   });
 })();
 
-/* ────────────────────────────────────────────
-   Real-time parsing (debounced 400ms)
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   DEBOUNCED REALTIME PARSE
+══════════════════════════════════════ */
 document.getElementById('raw').addEventListener('input', () => {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     const raw = document.getElementById('raw').value.trim();
-    if (raw.length > 100) go(); // only parse if there's meaningful content
-  }, 400);
+    if (raw.length > 100) go();
+  }, 450);
 });
 
-/* ────────────────────────────────────────────
-   Core Actions
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   CORE ACTIONS
+══════════════════════════════════════ */
 function go() {
   const raw = document.getElementById('raw').value.trim();
   if (!raw) return;
-
   const btn = document.getElementById('analyzeBtn');
   btn.classList.add('loading');
   setStatus('Analyzing…');
@@ -954,40 +1055,26 @@ function go() {
     body: JSON.stringify({ raw })
   })
   .then(r => r.json())
-  .then(data => {
-    btn.classList.remove('loading');
-    render(data);
-    setStatus('Analysis complete');
-  })
-  .catch(err => {
-    btn.classList.remove('loading');
-    setStatus('Error — check console');
-    console.error(err);
-  });
+  .then(data => { btn.classList.remove('loading'); render(data); setStatus('Analysis complete'); })
+  .catch(err => { btn.classList.remove('loading'); setStatus('Error — check console'); console.error(err); });
 }
 
 function clr() {
   document.getElementById('raw').value = '';
-  ALL_VULNS = [];
-  ACTIVE_FILTERS.clear();
-  SEARCH_TERM = '';
+  ALL_VULNS = []; ACTIVE_FILTERS.clear(); SEARCH_TERM = '';
   setStatus('Ready');
-  document.getElementById('out').innerHTML =
-    `<div class="placeholder" id="placeholder">
+  document.getElementById('out').innerHTML = `
+    <div class="placeholder">
       <div class="placeholder-icon">🔍</div>
       <h2>Security Dashboard</h2>
-      <p>Paste your WPScan output on the left. The dashboard will parse and visualize vulnerabilities, CVEs, plugins &amp; more in real-time.</p>
-      <p style="margin-top:8px"><kbd>Ctrl+Enter</kbd> to analyze instantly</p>
+      <p>Paste your WPScan output on the left to get started.</p>
     </div>`;
 }
 
 function loadExample() {
   fetch('/example')
     .then(r => r.text())
-    .then(txt => {
-      document.getElementById('raw').value = txt;
-      go();
-    })
+    .then(txt => { document.getElementById('raw').value = txt; go(); })
     .catch(() => setStatus('Could not load example'));
 }
 
@@ -995,180 +1082,135 @@ function setStatus(msg) {
   document.getElementById('status-text').textContent = msg;
 }
 
-/* ────────────────────────────────────────────
-   Multi-filter logic
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   FILTER LOGIC
+══════════════════════════════════════ */
 function toggleFilter(sev, btn) {
   if (sev === 'all') {
-    // Clear all → show all
     ACTIVE_FILTERS.clear();
     document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   } else {
-    // Remove 'all' active
     document.querySelector('.fb[data-sev="all"]')?.classList.remove('active');
-    if (ACTIVE_FILTERS.has(sev)) {
-      ACTIVE_FILTERS.delete(sev);
-      btn.classList.remove('active');
-    } else {
-      ACTIVE_FILTERS.add(sev);
-      btn.classList.add('active');
-    }
-    if (ACTIVE_FILTERS.size === 0) {
-      document.querySelector('.fb[data-sev="all"]')?.classList.add('active');
-    }
+    if (ACTIVE_FILTERS.has(sev)) { ACTIVE_FILTERS.delete(sev); btn.classList.remove('active'); }
+    else { ACTIVE_FILTERS.add(sev); btn.classList.add('active'); }
+    if (ACTIVE_FILTERS.size === 0) document.querySelector('.fb[data-sev="all"]')?.classList.add('active');
   }
   applyFilters();
 }
 
 function applyFilters() {
-  let filtered = ALL_VULNS;
-
+  let f = ALL_VULNS;
   if (ACTIVE_FILTERS.size > 0) {
-    filtered = filtered.filter(v => {
-      if (ACTIVE_FILTERS.has('unauthenticated')) {
-        if (v.title.toLowerCase().includes('unauthenticated')) return true;
-      }
+    f = f.filter(v => {
+      if (ACTIVE_FILTERS.has('unauthenticated') && v.title.toLowerCase().includes('unauthenticated')) return true;
       if (ACTIVE_FILTERS.has(v.severity)) return true;
       return false;
     });
   }
-
   if (SEARCH_TERM) {
     const q = SEARCH_TERM.toLowerCase();
-    filtered = filtered.filter(v =>
+    f = f.filter(v =>
       v.title.toLowerCase().includes(q) ||
       (v.plugin && v.plugin.toLowerCase().includes(q)) ||
       (v.cves && v.cves.some(c => c.id.toLowerCase().includes(q)))
     );
   }
-
   const container = document.getElementById('vb');
   if (container) {
-    container.innerHTML = renderVulns(filtered);
+    container.innerHTML = renderVulns(f);
     const fc = document.getElementById('filter-count');
-    if (fc) fc.textContent = `${filtered.length} shown`;
+    if (fc) fc.textContent = `${f.length} shown`;
   }
 }
 
-/* ────────────────────────────────────────────
-   Render
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   RENDER
+══════════════════════════════════════ */
 function render(d) {
   ALL_VULNS = d.vulnerabilities || [];
-  ACTIVE_FILTERS.clear();
-  SEARCH_TERM = '';
+  ACTIVE_FILTERS.clear(); SEARCH_TERM = '';
   const s = d.summary;
   let h = '';
 
-  /* Target */
+  // Target
   if (d.target) {
     h += `<div class="target-bar">
       <div class="target-dot"></div>
       <span class="target-url">${esc(d.target)}</span>
-      ${d.wordpress_version ? `<span class="target-version">WP ${esc(d.wordpress_version)}</span>` : ''}
+      ${d.wordpress_version ? `<span class="target-wp">WP ${esc(d.wordpress_version)}</span>` : ''}
     </div>`;
   }
 
-  /* Summary */
+  // Summary
   h += `<div class="summary-grid">
-    <div class="stat-card c-total">
-      <div class="num">${s.total_vulns}</div>
-      <div class="lbl">Total</div>
-    </div>
-    <div class="stat-card c-critical">
-      <div class="num">${s.critical}</div>
-      <div class="lbl">Critical</div>
-    </div>
-    <div class="stat-card c-high">
-      <div class="num">${s.high}</div>
-      <div class="lbl">High</div>
-    </div>
-    <div class="stat-card c-medium">
-      <div class="num">${s.medium}</div>
-      <div class="lbl">Medium</div>
-    </div>
-    <div class="stat-card c-low">
-      <div class="num">${s.low}</div>
-      <div class="lbl">Low</div>
-    </div>
+    <div class="stat-card c-total"><div class="stat-num">${s.total_vulns}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card c-critical"><div class="stat-num">${s.critical}</div><div class="stat-lbl">Critical</div></div>
+    <div class="stat-card c-high"><div class="stat-num">${s.high}</div><div class="stat-lbl">High</div></div>
+    <div class="stat-card c-medium"><div class="stat-num">${s.medium}</div><div class="stat-lbl">Medium</div></div>
+    <div class="stat-card c-low"><div class="stat-num">${s.low}</div><div class="stat-lbl">Low</div></div>
   </div>`;
 
-  /* Vulnerabilities */
+  // Vulnerabilities
   if (ALL_VULNS.length > 0) {
     h += `<div class="section">
       <div class="sec-header" onclick="tog('vb','vc')">
-        <div class="sec-title">
-          <span class="sec-icon">⚠</span>
-          All Vulnerabilities
-          <span class="cnt">${ALL_VULNS.length}</span>
-        </div>
-        <span class="chev open" id="vc">▾</span>
+        <div class="sec-title"><span class="sec-icon">⚠</span> All Vulnerabilities <span class="cnt">${ALL_VULNS.length}</span></div>
+        <div class="chev open" id="vc">▾</div>
       </div>
-      <div class="filter-row">
-        <span class="filter-label">Filter</span>
-        <button class="fb active" data-sev="all"     onclick="toggleFilter('all',this)">All</button>
-        <button class="fb fb-critical" data-sev="critical"  onclick="toggleFilter('critical',this)">Critical</button>
-        <button class="fb fb-high"     data-sev="high"      onclick="toggleFilter('high',this)">High</button>
-        <button class="fb fb-medium"   data-sev="medium"    onclick="toggleFilter('medium',this)">Medium</button>
-        <button class="fb fb-low"      data-sev="low"       onclick="toggleFilter('low',this)">Low</button>
-        <button class="fb fb-unauth"   data-sev="unauthenticated" onclick="toggleFilter('unauthenticated',this)">Unauth</button>
+      <div class="filter-bar">
+        <span class="filter-lbl">Filter</span>
+        <button class="fb active" data-sev="all" onclick="toggleFilter('all',this)">All</button>
+        <button class="fb fb-critical" data-sev="critical" onclick="toggleFilter('critical',this)">Critical</button>
+        <button class="fb fb-high" data-sev="high" onclick="toggleFilter('high',this)">High</button>
+        <button class="fb fb-medium" data-sev="medium" onclick="toggleFilter('medium',this)">Medium</button>
+        <button class="fb fb-low" data-sev="low" onclick="toggleFilter('low',this)">Low</button>
+        <button class="fb fb-unauth" data-sev="unauthenticated" onclick="toggleFilter('unauthenticated',this)">Unauth</button>
         <span class="filter-count" id="filter-count">${ALL_VULNS.length} shown</span>
       </div>
-      <div class="search-row">
-        <input type="text" class="search-input" id="vuln-search"
-          placeholder="Search vulnerabilities, plugins, CVEs…"
-          oninput="SEARCH_TERM=this.value;applyFilters()">
+      <div class="search-bar">
+        <input class="search-input" id="vuln-search" type="text" placeholder="🔍  Search by title, plugin, CVE…" oninput="SEARCH_TERM=this.value.trim();applyFilters()">
       </div>
       <div class="sec-body open" id="vb">${renderVulns(ALL_VULNS)}</div>
     </div>`;
   }
 
-  /* Plugins */
+  // Plugins
   if (d.plugins && d.plugins.length > 0) {
-    const pluginsHtml = d.plugins.map((p, idx) => {
-      const pid    = 'p' + idx;
-      const vcount = p.vulns ? p.vulns.length : 0;
+    const plugHtml = d.plugins.map((p, idx) => {
+      const pid = 'p' + idx;
+      const vc  = p.vulns ? p.vulns.length : 0;
       return `<div class="plugin-item">
         <div class="plugin-header" onclick="togP('${pid}',${idx})">
-          <div>
+          <div class="plugin-info">
             <span class="plugin-name">${esc(p.name)}</span>
             ${p.version ? `<span class="plugin-ver">v${esc(p.version)}</span>` : ''}
           </div>
-          <div class="plugin-meta">
-            <span class="vuln-count${vcount === 0 ? ' zero' : ''}">${vcount} vuln${vcount !== 1 ? 's' : ''}</span>
-            <span class="chev" id="pc${idx}">▾</span>
+          <div class="plugin-right">
+            <span class="vuln-count${vc === 0 ? ' zero' : ''}">${vc} vuln${vc !== 1 ? 's' : ''}</span>
+            <div class="chev" id="pc${idx}">▾</div>
           </div>
         </div>
         <div class="plugin-body" id="${pid}">
-          ${vcount > 0 ? renderVulns(p.vulns) : '<div class="empty-msg">No vulnerabilities identified.</div>'}
+          ${vc > 0 ? renderVulns(p.vulns) : '<div class="empty-msg">No vulnerabilities found.</div>'}
         </div>
       </div>`;
     }).join('');
-
     h += `<div class="section">
-      <div class="sec-header" onclick="tog('pb','pc_h')">
-        <div class="sec-title">
-          <span class="sec-icon">🔌</span>
-          Plugins
-          <span class="cnt">${d.plugins.length}</span>
-        </div>
-        <span class="chev" id="pc_h">▾</span>
+      <div class="sec-header" onclick="tog('pb','pch')">
+        <div class="sec-title"><span class="sec-icon">🧩</span> Plugins <span class="cnt">${d.plugins.length}</span></div>
+        <div class="chev" id="pch">▾</div>
       </div>
-      <div class="sec-body" id="pb">${pluginsHtml}</div>
+      <div class="sec-body" id="pb">${plugHtml}</div>
     </div>`;
   }
 
-  /* Interesting Findings */
+  // Interesting Findings
   if (d.interesting_findings && d.interesting_findings.length > 0) {
     h += `<div class="section">
       <div class="sec-header" onclick="tog('fb2','fc2')">
-        <div class="sec-title">
-          <span class="sec-icon">🔎</span>
-          Interesting Findings
-          <span class="cnt">${d.interesting_findings.length}</span>
-        </div>
-        <span class="chev" id="fc2">▾</span>
+        <div class="sec-title"><span class="sec-icon">🔎</span> Interesting Findings <span class="cnt">${d.interesting_findings.length}</span></div>
+        <div class="chev" id="fc2">▾</div>
       </div>
       <div class="sec-body" id="fb2">
         ${d.interesting_findings.map(f => `<div class="finding-item">${esc(f)}</div>`).join('')}
@@ -1176,16 +1218,12 @@ function render(d) {
     </div>`;
   }
 
-  /* Users */
+  // Users
   if (d.users && d.users.length > 0) {
     h += `<div class="section">
       <div class="sec-header" onclick="tog('ub','uc')">
-        <div class="sec-title">
-          <span class="sec-icon">👤</span>
-          Users Discovered
-          <span class="cnt">${d.users.length}</span>
-        </div>
-        <span class="chev open" id="uc">▾</span>
+        <div class="sec-title"><span class="sec-icon">👤</span> Users Found <span class="cnt">${d.users.length}</span></div>
+        <div class="chev open" id="uc">▾</div>
       </div>
       <div class="sec-body open" id="ub">
         ${d.users.map(u => `<div class="user-item">${esc(u)}</div>`).join('')}
@@ -1193,75 +1231,45 @@ function render(d) {
     </div>`;
   }
 
-  document.getElementById('out').innerHTML = h ||
-    `<div class="placeholder"><div class="placeholder-icon">❓</div><h2>Nothing Parsed</h2><p>Could not extract data. Ensure you paste the full WPScan output.</p></div>`;
+  document.getElementById('out').innerHTML = h || '<div class="placeholder"><div class="placeholder-icon">⚠</div><h2>No results</h2><p>Could not parse the output. Make sure you paste the full WPScan output.</p></div>';
 }
 
-/* ────────────────────────────────────────────
-   Render Vuln Cards
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   RENDER VULNS
+══════════════════════════════════════ */
 function renderVulns(vulns) {
   if (!vulns || vulns.length === 0)
-    return '<div class="empty-msg">No vulnerabilities match the current filters.</div>';
+    return '<div class="empty-msg">No vulnerabilities found.</div>';
 
   return vulns.map(v => {
     const sev  = v.severity || 'low';
-    const refs = (v.references || []);
-    const cves = (v.cves || []);
-
-    /* CVE section */
-    let cveHtml = '';
-    if (cves.length > 0) {
-      const cveTags = cves.map(c => {
-        const cveTag = c.cve_url
-          ? `<a href="${esc(c.cve_url)}" target="_blank" rel="noopener" class="cve-tag" title="View on NVD/Mitre">${esc(c.id)} ↗</a>`
-          : `<span class="cve-tag">${esc(c.id)}</span>`;
-        const pocBtn = c.poc_url
-          ? `<a href="${esc(c.poc_url)}" target="_blank" rel="noopener" class="poc-btn">💀 PoC</a>`
-          : '';
-        return cveTag + pocBtn;
-      }).join('');
-      cveHtml = `<div class="cve-row"><span class="cve-label">CVE</span>${cveTags}</div>`;
-    }
-
-    /* Reference tags */
-    const refTags = refs.slice(0, 4).map(r => {
+    const refs = (v.references || []).slice(0, 4).map(r => {
       const isCve    = r.includes('cve.mitre') || r.includes('nvd.nist');
-      const isWpscan = r.includes('wpscan.com');
-      const isWf     = r.includes('wordfence');
-      const isPatch  = r.includes('patchstack');
-      const isGh     = r.includes('github.com');
-      const isWpOrg  = r.includes('wordpress.org');
-
-      let lbl = 'Ref ↗';
-      let extraClass = 'tag-ref';
-      if (isCve)    { lbl = 'Mitre ↗'; extraClass = 'tag-wpscan'; }
-      else if (isWpscan) { lbl = 'WPScan ↗'; extraClass = 'tag-wpscan'; }
-      else if (isWf)     { lbl = 'Wordfence ↗'; }
-      else if (isPatch)  { lbl = 'PatchStack ↗'; }
-      else if (isGh)     { lbl = 'GitHub ↗'; }
-      else if (isWpOrg)  { lbl = 'WP.org ↗'; }
-
-      return `<span class="mtag ${extraClass}"><a href="${esc(r)}" target="_blank" rel="noopener">${lbl}</a></span>`;
+      const isWpscan = r.includes('wpscan');
+      const isPoc    = r.includes('exploit') || r.includes('github') || r.includes('poc');
+      const label    = isCve ? '🔗 CVE' : isWpscan ? '📋 WPScan' : isPoc ? '💥 PoC' : '🌐 Ref';
+      const cls      = isPoc ? 'poc-btn' : 'mtag tag-ref';
+      return `<a class="${cls}" href="${esc(r)}" target="_blank" rel="noopener">${label}</a>`;
     }).join('');
 
-    const fi   = v.fixed_in  ? `<span class="mtag tag-fixed">✓ Fixed ${esc(v.fixed_in)}</span>` : '';
-    const plug = v.plugin    ? `<span class="mtag tag-plugin">${esc(v.plugin)}</span>`            : '';
+    const fi   = v.fixed_in ? `<span class="mtag tag-fixed">✓ Fixed in ${esc(v.fixed_in)}</span>` : '';
+    const plug = v.plugin && v.plugin !== 'WordPress Core'
+      ? `<span class="mtag tag-plugin">🧩 ${esc(v.plugin)}</span>` : '';
+    const core = v.plugin === 'WordPress Core' ? `<span class="mtag">🔧 WordPress Core</span>` : '';
 
     return `<div class="vuln-item" data-sev="${sev}">
-      <div class="vuln-header">
+      <div class="vuln-top">
         <span class="sev sev-${sev}">${sev}</span>
         <span class="vtitle">${esc(v.title)}</span>
       </div>
-      ${cveHtml}
-      <div class="vuln-meta">${fi}${plug}${refTags}</div>
+      <div class="vuln-meta">${fi}${plug}${core}${refs}</div>
     </div>`;
   }).join('');
 }
 
-/* ────────────────────────────────────────────
-   Accordion helpers
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   ACCORDION HELPERS
+══════════════════════════════════════ */
 function tog(bodyId, chevId) {
   const b = document.getElementById(bodyId);
   const c = document.getElementById(chevId);
@@ -1272,29 +1280,28 @@ function tog(bodyId, chevId) {
 
 function togP(pid, idx) {
   const b = document.getElementById(pid);
-  const c = document.getElementById('pc' + idx);
   if (!b) return;
   b.classList.toggle('open');
+  const c = document.getElementById('pc' + idx);
   if (c) c.classList.toggle('open');
 }
 
-/* ────────────────────────────────────────────
-   Escape HTML
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   ESCAPE HTML
+══════════════════════════════════════ */
 function esc(s) {
   return String(s || '')
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#39;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-/* ────────────────────────────────────────────
-   Keyboard shortcuts
-──────────────────────────────────────────── */
+/* ══════════════════════════════════════
+   KEYBOARD SHORTCUT
+══════════════════════════════════════ */
 document.getElementById('raw').addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); go(); }
+  if (e.ctrlKey && e.key === 'Enter') go();
 });
 </script>
 </body>
